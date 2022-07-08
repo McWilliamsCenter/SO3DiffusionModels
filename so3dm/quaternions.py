@@ -6,7 +6,7 @@ def q_exp(q):
     """Returns the quaternion exponential of a quaternion.
 
     Args:
-      q: A quaternion.
+      q: A quaternion of shape [..., 4].
     Returns:
       The quaternion exponential of q.
     """
