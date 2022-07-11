@@ -4,8 +4,11 @@ import numpy as np
 from jaxlie import SO3
 
 import tensorflow_probability as tfp; tfp = tfp.substrates.jax
+
+from tensorflow_probability.python.internal.backend.jax.compat import v2 as tf
 from tensorflow_probability.python.internal import reparameterization
-from tensorflow_probability.python.internal import dtype_util
+from tensorflow_probability.substrates.jax.internal import dtype_util
+
 
 def _isotropic_gaussian_so3_small(omg, scale):
     """ Borrowed from: https://github.com/tomato1mule/edf/blob/1dd342e849fcb34d3eb4b6ad2245819abbd6c812/edf/dist.py#L99
@@ -15,9 +18,9 @@ def _isotropic_gaussian_so3_small(omg, scale):
     # TODO: check for stability and maybe replace by limit in 0 for small values
     small_number = 1e-9
     small_num = small_number / 2 
-    small_dnm = (1-np.exp(-1. * np.pi**2 / eps)*(2  - 4 * (np.pi**2) / eps   )) * small_number
+    small_dnm = (1-jnp.exp(-1. * jnp.pi**2 / eps)*(2  - 4 * (np.pi**2) / eps   )) * small_number
 
-    return 0.5 * np.sqrt(jnp.pi) * (eps ** -1.5) * jnp.exp((eps - (omg**2 / eps))/4) / (jnp.sin(omg/2) + small_num)            \
+    return 0.5 * jnp.sqrt(jnp.pi) * (eps ** -1.5) * jnp.exp((eps - (omg**2 / eps))/4) / (jnp.sin(omg/2) + small_num)            \
         * ( small_dnm + omg - ((omg - 2*jnp.pi)*jnp.exp(jnp.pi * (omg - jnp.pi) / eps) + (omg + 2*jnp.pi)*jnp.exp( -jnp.pi * (omg+jnp.pi) / eps) ))            
 
 def _isotropic_gaussian_so3(omg, scale, lmax = None):
@@ -33,7 +36,7 @@ def _isotropic_gaussian_so3(omg, scale, lmax = None):
     sum = 0.
     # TODO: replace by a scan
     for l in range(lmax + 1):
-        sum = sum + (2*l+1)    *    np.exp(-l*(l+1) * eps)    *    (  jnp.sin((l+0.5)*omg) + (l+0.5)*small_number  )    /    (  jnp.sin(omg/2) + 0.5*small_number  )
+        sum = sum + (2*l+1) *  jnp.exp(-l*(l+1) * eps)    *    (  jnp.sin((l+0.5)*omg) + (l+0.5)*small_number  )    /    (  jnp.sin(omg/2) + 0.5*small_number  )
     return sum
 
 
@@ -64,13 +67,18 @@ class IsotropicGaussianSO3(tfp.distributions.Distribution):
           parameters=parameters,
           name=name,
           dtype=dtype)
-        
+
+    def _event_shape_tensor(self):
+        return tf.constant([4], dtype=tf.int32)
+
+    def _event_shape(self):
+        return tf.TensorShape([4])
+
     def _f(self, angles):
-        if self._scale < 1:
-            prob = _isotropic_gaussian_so3_small(angles, self._scale/jnp.sqrt(2))
-        else:
-            prob = _isotropic_gaussian_so3(angles, self._scale/jnp.sqrt(2), lmax=3)
-        return prob
+        return jax.lax.cond(self._scale < 1, 
+                            lambda x: _isotropic_gaussian_so3_small(x, self._scale/jnp.sqrt(2)), 
+                            lambda x: _isotropic_gaussian_so3(x, self._scale/jnp.sqrt(2), lmax=3),
+                            angles)
         
     def _log_prob(self, q):
         if len(q.shape) == 1:
@@ -80,7 +88,7 @@ class IsotropicGaussianSO3(tfp.distributions.Distribution):
             axis_angle = (self._loc.inverse() @ SO3(x)).log()
             return jnp.linalg.norm(axis_angle, axis=-1)    
         angles = get_angles(q)
-        return jnp.log(self._f(angles))
+        return jnp.log(self._f(angles)).squeeze()
     
     def _sample_n(self, n, seed=None):
         key1, key2 = jax.random.split(seed)
