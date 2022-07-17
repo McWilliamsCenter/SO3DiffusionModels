@@ -28,7 +28,7 @@ flags.DEFINE_integer("batch_size", 512, "Size of the batch to train on.")
 flags.DEFINE_float("learning_rate", 3e-4, "Learning rate for the optimizer.")
 flags.DEFINE_integer("training_steps", 400000, "Total number of training steps.")
 flags.DEFINE_bool("train", True, "Whether to train the model or just sample from trained model.")
-flags.DEFINE_integer("test_nsamples", 100000, "Number of samples to draw at testing time.")
+flags.DEFINE_integer("test_nsamples", 20000, "Number of samples to draw at testing time.")
 
 FLAGS = flags.FLAGS
 

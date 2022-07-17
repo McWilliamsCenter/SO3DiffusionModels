@@ -23,24 +23,24 @@ import pickle
 flags.DEFINE_string("dataset", "checkerboard", "Dataset to train on. Can be 'checkerboard'.")
 flags.DEFINE_string("output_dir", "models/score_matching", "Folder where to store model and training info.")
 flags.DEFINE_integer("batch_size", 512, "Size of the batch to train on.")
-flags.DEFINE_float("learning_rate", 0.001, "Initiatl learning rate for the optimizer.")
-flags.DEFINE_integer("training_steps", 100000, "Total number of training steps.")
+flags.DEFINE_float("learning_rate", 0.001, "Initial learning rate for the optimizer.")
+flags.DEFINE_integer("training_steps", 400000, "Total number of training steps.")
 flags.DEFINE_bool("train", True, "Whether to train the model or just sample from trained model.")
-flags.DEFINE_integer("test_nsamples", 100000, "Number of samples to draw at testing time.")
+flags.DEFINE_integer("test_nsamples", 20000, "Number of samples to draw at testing time.")
 
 FLAGS = flags.FLAGS
 
 def lr_schedule(step):
   """Step learning rate schedule rule."""
   lr = (1.0 * FLAGS.batch_size) / 512
-  boundaries = jnp.array((0.2, 0.6) ) * FLAGS.training_steps
+  boundaries = jnp.array((0.2, 0.7) ) * FLAGS.training_steps
   values = jnp.array([1., 0.1, 0.01]) * lr
   index = jnp.sum(boundaries < step)
   return jnp.take(values, index)
 
 
 @jax.jit
-def get_batch(batch, key, noise_dist_std=0.8):
+def get_batch(batch, key, noise_dist_std=1.5):
     key1, key2 =jax.random.split(key)
     # Sample random noise from target noise distribution
     s = noise_dist_std * jnp.abs(jax.random.normal(shape=[FLAGS.batch_size], key=key1)) + 1e-2
@@ -60,7 +60,7 @@ def get_batch(batch, key, noise_dist_std=0.8):
 
 def model_fn(x,s):
     net = jnp.concatenate([x,s],axis=-1)
-    net = hk.nets.MLP([256, 256, 256], activation=jax.nn.leaky_relu)(net)
+    net = hk.nets.MLP([256, 256, 256, 256], activation=jax.nn.silu)(net)
     net = hk.Linear(3)(net)
     return net/s
 
@@ -84,7 +84,7 @@ def main(_):
         dset = dset.batch(FLAGS.batch_size)
         dset = dset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
         dset = dset.as_numpy_iterator()
-        t = next(dset)
+        _ = next(dset)
         
         # Initialize weights
         params = model.init(next(rng_seq),
@@ -125,7 +125,6 @@ def main(_):
             if step%50==0:
                 summary_writer.scalar('train_loss', loss, step)
                 summary_writer.scalar('learning_rate', FLAGS.learning_rate*lr_schedule(step), step)
-                print(step, loss)
 
             if step%10000 ==0:
                 with open(output_dir+'/model-%d.pckl'%step, 'wb') as file:
@@ -140,17 +139,29 @@ def main(_):
         params = pickle.load(file)
 
     # Starting sampling from the trained model
-    X0 = jax.vmap(lambda k: SO3.sample_uniform(k))(jax.random.split(next(rng_seq), FLAGS.test_nsamples))
-    t0 = 5.
+    X0 = jax.vmap(lambda k: SO3.sample_uniform(k).wxyz)(jax.random.split(next(rng_seq), FLAGS.test_nsamples))
+
+    # X0 = jax.vmap(lambda k: IsotropicGaussianSO3(SO3.identity(), jnp.sqrt(1000)).sample(seed=k))(jax.random.split(next(rng_seq), FLAGS.test_nsamples))
+    # # Open the dataset
+    # dset = tfds.load(FLAGS.dataset, split="train")
+    # dset = dset.repeat()
+    # dset = dset.shuffle(buffer_size=10000)
+    # dset = dset.batch(FLAGS.test_nsamples)
+    # dset = dset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+    # dset = dset.as_numpy_iterator()
+    # X0 = next(dset)['pos_quat']
+    # X0 = jax.vmap(lambda q,k: IsotropicGaussianSO3(q, jnp.sqrt(20)).sample(seed=k))(X0, jax.random.split(next(rng_seq), FLAGS.test_nsamples))
+
+    t0 = 10.
     @jax.jit
-    def dynamics(t, x):
+    def dynamics(x, t):
         return - 0.5*model.apply(params,x,jnp.ones([FLAGS.test_nsamples,1])*jnp.sqrt(t))
 
-    ts = jnp.linspace(t0, 0.0, 1024)
+    ts = jnp.linspace(t0, 0.0, 2048)
     Y = geomodeint(dynamics, X0, ts)
     with open(output_dir+"/Rsamples.npy", "wb") as f:
         onp.save(f, Y[-1])
-    visualize_so3_density(Y[-1],32);
+    visualize_so3_density(jax.vmap(lambda q: SO3(q).as_matrix())(Y[-1]),32);
     plt.savefig(output_dir+"/Rsamples.png")
 
 if __name__ == "__main__":
