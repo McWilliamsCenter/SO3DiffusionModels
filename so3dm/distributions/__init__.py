@@ -1,0 +1,1 @@
+from so3dm.distributions.isotropic_gaussian import IsotropicGaussianSO3
