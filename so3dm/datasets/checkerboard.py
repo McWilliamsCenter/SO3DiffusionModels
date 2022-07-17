@@ -16,6 +16,8 @@ def sample_checkerboard(seed, size=jnp.pi):
     x2 = x2_ + (jnp.floor(x1) % 2)
     data = jnp.stack([x1, x2]) * size/2
     rot = SO3.from_rpy_radians(pitch=data[0]/2, yaw=data[1], roll=0)
+    # Fix positivity convention
+    rot = SO3.exp(rot.log())
     return rot.as_matrix(), rot.wxyz
 
 class Checkerboard(tfds.core.GeneratorBasedBuilder):

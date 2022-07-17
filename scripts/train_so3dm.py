@@ -15,7 +15,7 @@ import numpy as onp
 from jaxlie import SO3
 from so3dm.distributions import IsotropicGaussianSO3
 from so3dm.ode import geomodeint
-from so3dm.plotting import visualize_so3_density
+from so3dm.plotting import visualize_so3_density, visualize_so3_probabilities
 import matplotlib.pyplot as plt
 
 import pickle
@@ -40,7 +40,7 @@ def lr_schedule(step):
 
 
 @jax.jit
-def get_batch(batch, key, noise_dist_std=1.5):
+def get_batch(batch, key, noise_dist_std=1.2):
     key1, key2 =jax.random.split(key)
     # Sample random noise from target noise distribution
     s = noise_dist_std * jnp.abs(jax.random.normal(shape=[FLAGS.batch_size], key=key1)) + 1e-2
@@ -59,6 +59,7 @@ def get_batch(batch, key, noise_dist_std=1.5):
     return sample(batch['pos_quat'], s, jax.random.split(key2, FLAGS.batch_size))
 
 def model_fn(x,s):
+    x = jax.vmap(lambda u: SO3(u).log())(x)
     net = jnp.concatenate([x,s],axis=-1)
     net = hk.nets.MLP([256, 256, 256, 256], activation=jax.nn.silu)(net)
     net = hk.Linear(3)(net)
@@ -141,17 +142,6 @@ def main(_):
     # Starting sampling from the trained model
     X0 = jax.vmap(lambda k: SO3.sample_uniform(k).wxyz)(jax.random.split(next(rng_seq), FLAGS.test_nsamples))
 
-    # X0 = jax.vmap(lambda k: IsotropicGaussianSO3(SO3.identity(), jnp.sqrt(1000)).sample(seed=k))(jax.random.split(next(rng_seq), FLAGS.test_nsamples))
-    # # Open the dataset
-    # dset = tfds.load(FLAGS.dataset, split="train")
-    # dset = dset.repeat()
-    # dset = dset.shuffle(buffer_size=10000)
-    # dset = dset.batch(FLAGS.test_nsamples)
-    # dset = dset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-    # dset = dset.as_numpy_iterator()
-    # X0 = next(dset)['pos_quat']
-    # X0 = jax.vmap(lambda q,k: IsotropicGaussianSO3(q, jnp.sqrt(20)).sample(seed=k))(X0, jax.random.split(next(rng_seq), FLAGS.test_nsamples))
-
     t0 = 10.
     @jax.jit
     def dynamics(x, t):
@@ -161,6 +151,7 @@ def main(_):
     Y = geomodeint(dynamics, X0, ts)
     with open(output_dir+"/Rsamples.npy", "wb") as f:
         onp.save(f, Y[-1])
+
     visualize_so3_density(jax.vmap(lambda q: SO3(q).as_matrix())(Y[-1]),32);
     plt.savefig(output_dir+"/Rsamples.png")
 
