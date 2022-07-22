@@ -7,6 +7,7 @@ setup(
     author='Yesukhei Jagvaral',
     description='Collection of tools for implementing SO3 diffusion models',
     packages=find_packages(),
-    install_requires=['optax', 'dm-haiku',
-                      'tensorflow-probability', 'tensorflow-datasets'],
+    install_requires=['optax', 'dm-haiku', 'healpy',
+                      'tensorflow-probability', 
+                      'tensorflow-datasets'],
 )

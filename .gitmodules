@@ -1,0 +1,3 @@
+[submodule "scripts/diffusion-extensions"]
+	path = scripts/diffusion-extensions
+	url = https://github.com/qazwsxal/diffusion-extensions.git

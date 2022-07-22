@@ -3,11 +3,12 @@ import jax.numpy as jnp
 import numpy as np
 from jaxlie import SO3
 import matplotlib.pyplot as plt
+import healpy as hp
 
 # Function adapted from 
 # https://colab.research.google.com/github/implicit-pdf/implicit-pdf.github.io/blob/main/ipdf_files/ipdf_inference_demo_pascal.ipynb
 def visualize_so3_probabilities(rotations,
-                                probabilities,
+                                probabilities=None,
                                 rotations_gt=None,
                                 ax=None,
                                 fig=None,
@@ -76,6 +77,9 @@ def visualize_so3_probabilities(rotations,
                           facecolors='#ffffff')
 
   # Display the distribution
+  if probabilities is None:
+    probabilities = jnp.ones_like(longitudes)*0.001
+  
   ax.scatter(
       longitudes,
       latitudes,
@@ -105,3 +109,19 @@ def visualize_so3_probabilities(rotations,
              verticalalignment='center', transform=ax.transAxes)
   plt.show()
   return fig
+
+
+def visualize_so3_density(rotations,
+                          nside):
+  xyz = rotations[:, :, 0]
+  phi = jnp.arctan2(xyz[:, 0], -xyz[:, 1])
+  theta = jnp.pi/2 - jnp.arcsin(xyz[:, 2])
+  npix = hp.nside2npix(nside)
+  
+  # convert to HEALPix indices
+  indices = hp.ang2pix(nside, theta, phi)
+  idx, counts = np.unique(indices, return_counts=True)
+  hpx_map = np.zeros(npix, dtype=int)
+  hpx_map[idx] = counts
+
+  hp.mollview(hpx_map,cmap='magma')
