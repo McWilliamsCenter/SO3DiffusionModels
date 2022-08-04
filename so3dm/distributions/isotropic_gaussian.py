@@ -43,6 +43,7 @@ def _isotropic_gaussian_so3(omg, scale, lmax = None):
 class IsotropicGaussianSO3(tfp.distributions.Distribution):
     
     def __init__(self, loc, scale,
+               force_small_scale=False,
                validate_args=False,
                allow_nan_stats=True,
                name='IsotropicGaussianSO3'):
@@ -53,6 +54,7 @@ class IsotropicGaussianSO3(tfp.distributions.Distribution):
             loc = SO3(loc)
         self._loc = loc
         self._scale = scale
+        self._force_small_scale = force_small_scale
         
         # Precomputing array of values for doing inverse  cdf sampling
         self._x = jnp.linspace(0, jnp.pi, 1024)
@@ -74,7 +76,9 @@ class IsotropicGaussianSO3(tfp.distributions.Distribution):
     def _event_shape(self):
         return tf.TensorShape([4])
 
-    def _f(self, angles):
+    def _f(self, angles):     
+        if self._force_small_scale:
+            return _isotropic_gaussian_so3_small(angles, self._scale/jnp.sqrt(2))
         return jax.lax.cond(self._scale < 1, 
                             lambda x: _isotropic_gaussian_so3_small(x, self._scale/jnp.sqrt(2)), 
                             lambda x: _isotropic_gaussian_so3(x, self._scale/jnp.sqrt(2), lmax=3),
@@ -88,7 +92,7 @@ class IsotropicGaussianSO3(tfp.distributions.Distribution):
             axis_angle = (self._loc.inverse() @ SO3(x)).log()
             return jnp.linalg.norm(axis_angle, axis=-1)    
         angles = get_angles(q)
-        return jnp.log(self._f(angles)).squeeze()
+        return jnp.log(self._f(angles)+1e-9).squeeze() # 1e-9 is for numerical stability, avoiding 0 in log
     
     def _sample_n(self, n, seed=None):
         key1, key2 = jax.random.split(seed)
