@@ -88,7 +88,7 @@ class IsotropicGaussianSO3(tfp.distributions.Distribution):
             axis_angle = (self._loc.inverse() @ SO3(x)).log()
             return jnp.linalg.norm(axis_angle, axis=-1)    
         angles = get_angles(q)
-        return jnp.log(self._f(angles)).squeeze()
+        return jnp.log(self._f(angles) +1e-8).squeeze()
     
     def _sample_n(self, n, seed=None):
         key1, key2 = jax.random.split(seed)
