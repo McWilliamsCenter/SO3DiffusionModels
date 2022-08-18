@@ -21,3 +21,12 @@ python train_LeachEtAl22.py
 python train_so3dm.py
 ```
 This will create folders under 'models' with samples of the models after training.
+
+
+## Running metrics 
+
+To run the metrics :
+'''bash 
+python c2st.py <location/of/sample1> <location/of/sample2> n-folds
+'''
+samples should be in .npy format. n-folds is the number of folds in the cross validation, n-folds=10 is standard (i think)
