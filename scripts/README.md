@@ -26,7 +26,7 @@ This will create folders under 'models' with samples of the models after trainin
 ## Running metrics 
 
 To run the metrics :
-'''bash 
+```bash 
 python c2st.py <location/of/sample1> <location/of/sample2> n-folds
-'''
+```
 samples should be in .npy format. n-folds is the number of folds in the cross validation, n-folds=10 is standard (i think)
