@@ -13,7 +13,8 @@ from absl import logging
 import numpy as np
 import tensorflow as tf
 import tensorflow_graphics.geometry.transformation as tfg
-
+from flax.metrics import tensorboard
+import matplotlib.pyplot as plt
 
 tfkl = tf.keras.layers
 eps = 1e-9
@@ -22,7 +23,9 @@ import os
 from absl import app
 from absl import flags
 from absl import logging
-import numpy as np
+import numpy as onp
+import jax.numpy as jnp
+from tqdm import tqdm
 import tensorflow as tf
 from implicit_pdf import data
 from implicit_pdf import evaluation
@@ -36,8 +39,8 @@ from so3dm.plotting import visualize_so3_density
 FLAGS = flags.FLAGS
 
 #################################### I/O #######################################
-flags.DEFINE_string('outdir',
-                    'models/ipdf_output/',
+flags.DEFINE_string('output_dir',
+                    'models/ipdf',
                     'The directory in which to save results and images.')
 flags.DEFINE_bool('save_models', True, 'Whether to save the vision and IPDF'
                   ' models at the end of training.')
@@ -59,7 +62,7 @@ flags.DEFINE_integer('downsample_continuous_gt', 0,
                      'evaluation slow.')
 ################################# Training #####################################
 flags.DEFINE_integer('number_training_iterations',
-                     10,
+                     100000,
                      'The number of iterations to train.')
 flags.DEFINE_integer('number_eval_iterations', None,
                      'The number of iterations to eval.')
@@ -454,6 +457,8 @@ def generate_healpix_grid(recursion_level=None, size=None):
 
 
 def main(_):
+    output_dir = FLAGS.output_dir+"_"+FLAGS.dataset
+    jnp.linalg.inv(jnp.eye(3))
     model_head = ImplicitSO3(1, 1, [256,256,256,256],
                                   'random',
                                   2**12,
@@ -472,7 +477,8 @@ def main(_):
     dset = dset.as_numpy_iterator()
     _ = next(dset)
 
-
+    summary_writer = tensorboard.SummaryWriter(output_dir)
+    
     ##########################  Optimizer  #####################################
     optimizer = tf.keras.optimizers.get('Adam')
     learning_rate = 1e-5
@@ -480,7 +486,7 @@ def main(_):
     #########################  Logging setup  ##################################
     train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
 
-    log_dir = os.path.join('outdir', 'logs')
+    log_dir = os.path.join('output_dir/', 'logs')
     train_summary_writer = tf.summary.create_file_writer(log_dir)
 
 
@@ -500,7 +506,8 @@ def main(_):
         optimizer.apply_gradients( zip(grads, model_head.trainable_variables))
         return loss
 
-    #number_training_iterations = int(1e4)
+    number_training_iterations = FLAGS.number_training_iterations
+    
     for step in tqdm(range( number_training_iterations)):
         step_num = optimizer.iterations.numpy()
         if step_num > number_training_iterations:
@@ -528,9 +535,9 @@ def main(_):
           logging.info('Step %d, training loss=%.2f', step_num, avg_loss)
 
     R, probs = model_head.output_pdf( num_queries=200_00 )
-    R = R[probs>thresh]
-    with open(outdir+"/Rsamples.npy", "wb") as f:
-        np.save(f, R)
+    R = R[probs>FLAGS.thresh]
+    with open(output_dir+"/Rsamples.npy", "wb") as f:
+        onp.save(f, R)
     visualize_so3_density(R,32);
     plt.savefig(output_dir+"/Rsamples.png")
     
