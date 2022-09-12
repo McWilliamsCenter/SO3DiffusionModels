@@ -124,4 +124,4 @@ def visualize_so3_density(rotations,
   hpx_map = np.zeros(npix, dtype=int)
   hpx_map[idx] = counts
 
-  hp.mollview(hpx_map,cmap='magma')
+  hp.mollview(hpx_map,cmap='twilight_shifted', title='',cbar=False)
