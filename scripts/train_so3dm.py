@@ -18,16 +18,23 @@ from so3dm.distributions import IsotropicGaussianSO3
 from so3dm.ode import geomodeint
 from so3dm.plotting import visualize_so3_density, visualize_so3_probabilities
 import matplotlib.pyplot as plt
-
+from so3dm.metrics import c2st
 import pickle
 
 flags.DEFINE_string("dataset", "checkerboard", "Dataset to train on. Can be 'checkerboard'.")
-flags.DEFINE_string("output_dir", "models/score_matching", "Folder where to store model and training info.")
-flags.DEFINE_integer("batch_size", 512, "Size of the batch to train on.")
+flags.DEFINE_string("output_dir", "models/score_matching/", "Folder where to store model and training info.")
+flags.DEFINE_integer("batch_size", 1024, "Size of the batch to train on.")
 flags.DEFINE_float("learning_rate", 0.001, "Initial learning rate for the optimizer.")
 flags.DEFINE_integer("training_steps", 400000, "Total number of training steps.")
 flags.DEFINE_bool("train", True, "Whether to train the model or just sample from trained model.")
-flags.DEFINE_integer("test_nsamples", 20000, "Number of samples to draw at testing time.")
+flags.DEFINE_integer("test_nsamples", 200_000, "Number of samples to draw at testing time.")
+
+ 
+#Metric
+flags.DEFINE_bool("compute_c2st", True, "Whether to compute the c2st score agianst the true samples")
+flags.DEFINE_integer("n_folds", 5, "Number of folds in c2st")
+
+
 
 FLAGS = flags.FLAGS
 
@@ -62,12 +69,12 @@ def get_batch(batch, key, noise_dist_std=1.2):
 def model_fn(x,s):
     x = jax.vmap(lambda u: SO3(u).log())(x)
     net = jnp.concatenate([x,s],axis=-1)
-    net = hk.nets.MLP([256, 256, 256, 256], activation=jax.nn.silu)(net)
+    net = hk.nets.MLP([256, 256, 256, 256, 256], activation=jax.nn.silu)(net)
     net = hk.Linear(3)(net)
     return net/s
 
 def main(_):
-    output_dir = FLAGS.output_dir+"_"+FLAGS.dataset
+    output_dir = FLAGS.output_dir 
 
     # Just to make sure jax is initialized before TF
     jnp.linalg.inv(jnp.eye(3))
@@ -129,15 +136,15 @@ def main(_):
                 summary_writer.scalar('learning_rate', FLAGS.learning_rate*lr_schedule(step), step)
 
             if step%10000 ==0:
-                with open(output_dir+'/model-%d.pckl'%step, 'wb') as file:
+                with open(output_dir+ '/' + FLAGS.dataset + '_model-%d.pckl'%step, 'wb') as file:
                     pickle.dump(params, file)
 
         summary_writer.flush()
 
-        with open(output_dir+'/model-final.pckl', 'wb') as file:
+        with open(output_dir+'/' + FLAGS.dataset + '_model-final.pckl', 'wb') as file:
             pickle.dump(params, file)
 
-    with open(output_dir+'/model-final.pckl', 'rb') as file:
+    with open(output_dir+'/' + FLAGS.dataset + '_model-final.pckl', 'rb') as file:
         params = pickle.load(file)
 
     # Starting sampling from the trained model
@@ -150,11 +157,41 @@ def main(_):
 
     ts = jnp.linspace(t0, 0.0, 2048)
     Y = geomodeint(dynamics, X0, ts)
-    with open(output_dir+"/Rsamples.npy", "wb") as f:
+    with open(output_dir + FLAGS.dataset + '_' + str(FLAGS.test_nsamples) + ".npy", "wb") as f:
         onp.save(f, Y[-1])
 
-    visualize_so3_density(jax.vmap(lambda q: SO3(q).as_matrix())(Y[-1]),32);
-    plt.savefig(output_dir+"/Rsamples.png")
+    visualize_so3_density(jax.vmap(lambda q: SO3(q).as_matrix())(Y[-1]), 100);
+    plt.savefig(output_dir + FLAGS.dataset + '_' + str(FLAGS.test_nsamples) + ".png")
+    
+    if FLAGS.compute_c2st:    
+        true_samp_loc = '../so3dm/datasets/' + 'gauss4' + '_true_200_000.npy'
+
+
+
+        with open(true_samp_loc , 'rb') as file:
+            true_samp = onp.load(file)
+
+        seed = 1
+        if true_samp.shape[1] == 3:
+            true_samp = jax.vmap(lambda m: SO3.from_matrix(m).wxyz )(true_samp) # print(X.shape)
+
+
+        print("Calculating c2st ... ")
+        c2_score = c2st(true_samp, Y[-1], seed, FLAGS.n_folds)
+
+        with open(output_dir+"output.txt", "a") as f:
+          print( "C2ST score: "+ str(c2_score), file=f)
+
+        print(true_samp.shape[1])
+        print("\n")
+        print("\n")
+        print("\n")
+        print("\n")
+        print("\n")
+
+        print("C2ST score: "+ str(c2_score))
+        
+        
 
 if __name__ == "__main__":
     app.run(main)
