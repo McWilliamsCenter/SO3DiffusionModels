@@ -192,8 +192,8 @@ def main(_):
   for i in tqdm(range(FLAGS.test_nsamples// (cfg.batch_size * M) + 1)):
     x = get_samples(next(rng_seq))
     samples.append(x)
-  x = jnp.stack(samples, axis=0)[:FLAGS.test_nsamples]
-    
+  x = jnp.concatenate(samples, axis=0)[:FLAGS.test_nsamples]
+  
   with open(output_dir + FLAGS.dataset + '_' + str(FLAGS.test_nsamples) + ".npy", "wb") as f:
     # Converting to quaternions
     q = jax.vmap(lambda R: SO3.from_matrix(R).wxyz)(x)
