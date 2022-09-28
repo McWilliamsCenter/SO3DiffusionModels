@@ -21,11 +21,11 @@ import tensorflow_datasets as tfds
 from flax.metrics import tensorboard
 from so3dm.plotting import visualize_so3_density
 import matplotlib.pyplot as plt
-from c2st import c2st
+from so3dm.metrics import c2st
 import jax
 from jaxlie import SO3
 
-flags.DEFINE_string("dataset", "stripes3", "Dataset to train on. Can be 'checkerboard'.")
+flags.DEFINE_string("dataset", "checkerboard", "Dataset to train on. Can be 'checkerboard'.")
 flags.DEFINE_string("output_dir", "models/leachetal", "Folder where to store model and training info.")
 flags.DEFINE_integer("batch_size", 512, "Size of the batch to train on.")
 flags.DEFINE_float("learning_rate", 3e-4, "Learning rate for the optimizer.")

@@ -21,10 +21,10 @@ from so3dm.distributions import IsotropicGaussianSO3
 from so3dm.ode import geomodeint
 from so3dm.plotting import visualize_so3_density, visualize_so3_probabilities
 import matplotlib.pyplot as plt
-from c2st import c2st
+from so3dm.metrics import c2st
 import pickle
 
-flags.DEFINE_string("dataset", "gaussian_blob_4", "Dataset to train on. Can be 'checkerboard'.")
+flags.DEFINE_string("dataset", "checkerboard", "Dataset to train on. Can be 'checkerboard'.")
 flags.DEFINE_string("output_dir", "models/score_matching/", "Folder where to store model and training info.")
 flags.DEFINE_integer("batch_size", 1024, "Size of the batch to train on.")
 flags.DEFINE_float("learning_rate", 0.001, "Initial learning rate for the optimizer.")

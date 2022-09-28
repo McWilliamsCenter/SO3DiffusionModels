@@ -24,9 +24,9 @@ import matplotlib.pyplot as plt
 
 import pickle
 
-from c2st import c2st
+from so3dm.metrics import c2st
 
-flags.DEFINE_string("dataset", "gaussian_blob_4", "Dataset to train on. Can be 'checkerboard'.")
+flags.DEFINE_string("dataset", "checkerboard", "Dataset to train on. Can be 'checkerboard'.")
 flags.DEFINE_string("output_dir", "models/so3ddpm_VExp_log/", "Folder where to store model and training info.")
 flags.DEFINE_integer("batch_size", 1024, "Size of the batch to train on.")
 flags.DEFINE_float("learning_rate", 0.0001, "Initial learning rate for the optimizer.")

@@ -21,7 +21,7 @@ from so3dm.distributions import IsotropicGaussianSO3
 from so3dm.ode import geomodeint
 from so3dm.plotting import visualize_so3_density, visualize_so3_probabilities
 import matplotlib.pyplot as plt
-from c2st import c2st
+from so3dm.metrics import c2st
 import pickle
 
 flags.DEFINE_string("dataset", "checkerboard", "Dataset to train on. Can be 'checkerboard'.")
