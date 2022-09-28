@@ -2,9 +2,6 @@
 from absl import app
 from absl import flags
 
-import sys
-import os
-sys.path.append('../')
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
