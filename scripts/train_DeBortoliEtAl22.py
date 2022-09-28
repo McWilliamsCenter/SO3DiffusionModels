@@ -185,11 +185,12 @@ def main(_):
     sampler_kwargs = {}
   sampler = pushforward.get_sampler(model_w_dicts, train=False, **sampler_kwargs)
   x0, context = next(test_ds)
-  shape = (int(cfg.batch_size), *transform.inv(x0).shape[1:])
-
+  M = 16
+  shape = (int(cfg.batch_size * M), *transform.inv(x0).shape[1:])
+  get_samples = jax.jit(lambda seed: sampler(seed, shape, None))
   samples = []
-  for i in range(FLAGS.test_nsamples//cfg.batch_size + 1):
-    x = sampler(next(rng_seq), shape, context[0])
+  for i in tqdm(range(FLAGS.test_nsamples// (cfg.batch_size * M) + 1)):
+    x = get_samples(next(rng_seq))
     samples.append(x)
   samples = jnp.stack(samples, axis=0)[:FLAGS.test_nsamples]
     
