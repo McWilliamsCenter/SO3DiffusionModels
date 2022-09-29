@@ -34,7 +34,7 @@ def c2st(X,Y,seed,n_folds, down_sample = True, down_sample_len = 5_000 ):
     clf = MLPClassifier(
     activation="relu",
     hidden_layer_sizes=(10 * ndim, 10 * ndim),
-    max_iter=500,
+    max_iter=1000,
     solver="adam",
     random_state=seed,
                        )
