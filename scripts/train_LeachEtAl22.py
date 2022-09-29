@@ -139,8 +139,7 @@ def main(_):
     plt.savefig(output_dir+"/Rsamples_" + FLAGS.dataset+ ".png")
     
     if FLAGS.compute_c2st:    
-        true_samp_loc = '../so3dm/datasets/' + FLAGS.dataset + '_true_200_000.npy'
-
+        true_samp_loc = 'reference_distribution/' + FLAGS.dataset + '_true_200_000.npy'
 
 
         with open(true_samp_loc , 'rb') as file:

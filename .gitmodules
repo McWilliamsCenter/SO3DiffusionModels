@@ -4,3 +4,6 @@
 [submodule "scripts/google-research"]
 	path = scripts/google-research
 	url = https://github.com/google-research/google-research.git
+[submodule "scripts/riemannian-score-sde"]
+	path = scripts/riemannian-score-sde
+	url = https://github.com/EiffL/riemannian-score-sde.git

@@ -9,6 +9,9 @@ the external projects with the following:
 # For denoising diffusion models
 pip install git+https://github.com/lucidrains/denoising-diffusion-pytorch.git
 pip install git+https://github.com/lucidrains/se3-transformer-pytorch.git
+# For Riemannian Score-Based Generative Modelling
+pip install git+https://github.com/oxcsml/geomstats.git@jax_backend
+pip install git+https://github.com/EiffL/riemannian-score-sde.git
 ```
 
 This assumes you already have pytorch installed.
