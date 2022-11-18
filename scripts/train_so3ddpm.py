@@ -38,7 +38,7 @@ flags.DEFINE_string("diffusion_type", "vexp", "Variance preserving or variance e
 
 flags.DEFINE_bool("compute_c2st", True, "Whether to compute the c2st score agianst the true samples")
 
-flags.DEFINE_integer("n_steps", 128, "Number of steps in noise schedule")
+flags.DEFINE_integer("n_steps", 256, "Number of steps in noise schedule")
 
 flags.DEFINE_integer("n_folds", 5, "Number of folds in c2st")
     
@@ -152,11 +152,10 @@ def main(_):
     rng_seq = hk.PRNGSequence(42)
     
     if FLAGS.diffusion_type == "vexp":
-        noise_schedule = jnp.linspace(0.05, 1.5, 
-                                      FLAGS.n_steps) 
-        noise_schedule = noise_schedule**3 + 0.0001
+        noise_schedule = jnp.linspace(0.05, 1.25, FLAGS.n_steps) 
+        noise_schedule = noise_schedule**2 + 0.0001
     elif FLAGS.diffusion_type == "vpres":
-        beta = jnp.linspace(0.0001, 0.08, FLAGS.n_steps)
+        beta = jnp.linspace(0.0001, 0.04, FLAGS.n_steps)
         # This corresponds to alpha, it starts from 1, i.e. almost no change in the image
         noise_schedule = jnp.cumprod(1 - beta)
     else:
