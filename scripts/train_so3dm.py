@@ -28,12 +28,11 @@ flags.DEFINE_float("learning_rate", 0.001, "Initial learning rate for the optimi
 flags.DEFINE_integer("training_steps", 400000, "Total number of training steps.")
 flags.DEFINE_bool("train", True, "Whether to train the model or just sample from trained model.")
 flags.DEFINE_integer("test_nsamples", 200_000, "Number of samples to draw at testing time.")
-
+flags.DEFINE_string("input_rotation_param", "axis-angle", "Parameterisation of the rotation at the input of the NN either 'axis-angle' or 'matrix'")
  
 #Metric
 flags.DEFINE_bool("compute_c2st", True, "Whether to compute the c2st score agianst the true samples")
 flags.DEFINE_integer("n_folds", 5, "Number of folds in c2st")
-
 
 
 FLAGS = flags.FLAGS
@@ -67,7 +66,12 @@ def get_batch(batch, key, noise_dist_std=1.2):
     return sample(batch['pos_quat'], s, jax.random.split(key2, FLAGS.batch_size))
 
 def model_fn(x,s):
-    x = jax.vmap(lambda u: SO3(u).log())(x)
+    if FLAGS.input_rotation_param == 'axis-angle':
+        x = jax.vmap(lambda u: SO3(u).log())(x)
+    elif FLAGS.input_rotation_param == 'matrix':
+        x = jax.vmap(lambda u: SO3(u).as_matrix().flatten())(x)
+    else:
+        raise NotImplementedError
     net = jnp.concatenate([x,s],axis=-1)
     net = hk.nets.MLP([256, 256, 256, 256, 256], activation=jax.nn.silu)(net)
     net = hk.Linear(3)(net)
@@ -173,7 +177,6 @@ def main(_):
         seed = 1
         if true_samp.shape[1] == 3:
             true_samp = jax.vmap(lambda m: SO3.from_matrix(m).wxyz )(true_samp) # print(X.shape)
-
 
         print("Calculating c2st ... ")
         c2_score = c2st(true_samp, Y[-1], seed, FLAGS.n_folds)
