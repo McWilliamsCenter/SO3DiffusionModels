@@ -26,14 +26,14 @@ import pickle
 from so3dm.metrics import c2st
 
 flags.DEFINE_string("dataset", "checkerboard", "Dataset to train on. Can be 'checkerboard'.")
-flags.DEFINE_string("output_dir", "models/so3ddpm_vexp/", "Folder where to store model and training info.")
+flags.DEFINE_string("output_dir", "models/so3ddpm/", "Folder where to store model and training info.")
 flags.DEFINE_integer("batch_size", 1024, "Size of the batch to train on.")
 flags.DEFINE_float("learning_rate", 0.001, "Initial learning rate for the optimizer.")
 flags.DEFINE_integer("training_steps", 400_000 , "Total number of training steps.")
 flags.DEFINE_bool("train", True, "Whether to train the model or just sample from trained model.")
 flags.DEFINE_integer("test_nsamples", 200_000, "Number of samples to draw at testing time.")
-flags.DEFINE_string("input_rotation_param", "axis-angle", "Parameterisation of the rotation at the input of the NN either 'axis-angle' or 'matrix'")
-flags.DEFINE_string("output_rotation_param", "axis-angle", "Parameterisation of the rotation at the output of the NN either 'axis-angle' or 'matrix'")
+flags.DEFINE_string("input_rotation_param", "matrix", "Parameterisation of the rotation at the input of the NN either 'axis-angle' or 'matrix'")
+flags.DEFINE_string("output_rotation_param", "matrix", "Parameterisation of the rotation at the output of the NN either 'axis-angle' or 'matrix'")
 flags.DEFINE_string("diffusion_type", "vexp", "Variance preserving or variance exploding diffusion 'vexp' or 'vpres'") 
 
 flags.DEFINE_bool("compute_c2st", True, "Whether to compute the c2st score agianst the true samples")
@@ -226,15 +226,15 @@ def main(_):
                 summary_writer.scalar('learning_rate', FLAGS.learning_rate*lr_schedule(step), step)
 
             if step%10000 ==0:
-                with open(output_dir+ '/' + FLAGS.dataset + '_model-%d.pckl'%step, 'wb') as file:
+                with open(output_dir+ '/' + FLAGS.dataset +'_'+ FLAGS.diffusion_type + '_model-%d.pckl'%step, 'wb') as file:
                     pickle.dump(params, file)
 
         summary_writer.flush()
 
-        with open(output_dir+'/' + FLAGS.dataset + '_model-final.pckl', 'wb') as file:
+        with open(output_dir+'/' + FLAGS.dataset +'_'+ FLAGS.diffusion_type + '_model-final.pckl', 'wb') as file:
             pickle.dump(params, file)
 
-    with open(output_dir+'/' + FLAGS.dataset + '_model-final.pckl', 'rb') as file:
+    with open(output_dir+'/' + FLAGS.dataset +'_'+ FLAGS.diffusion_type + '_model-final.pckl', 'rb') as file:
         params = pickle.load(file)
 
     # Starting sampling from the trained model
@@ -260,14 +260,15 @@ def main(_):
 
     # Remove nans if we accidentally sampled any
     x_t = x_t[~onp.isnan(x_t.sum(axis=-1))]
-    with open(output_dir + FLAGS.dataset + '_' + str(FLAGS.test_nsamples) + ".npy", "wb") as f:
+    with open(output_dir + FLAGS.dataset +'_'+ FLAGS.diffusion_type + '_' + str(FLAGS.test_nsamples) + ".npy", "wb") as f:
         onp.save(f, x_t)
 
     visualize_so3_density(jax.vmap(lambda q: SO3(q).as_matrix())(x_t), 100);
-    plt.savefig(output_dir + FLAGS.dataset + '_VExp_' + str(FLAGS.test_nsamples) + ".png")
+    plt.savefig(output_dir + FLAGS.dataset +'_'+ FLAGS.diffusion_type + '_' + str(FLAGS.test_nsamples) + ".png")
 
     if FLAGS.compute_c2st:    
         true_samp_loc = 'reference_distribution/' + FLAGS.dataset + '_true_200_000.npy'
+
 
         with open(true_samp_loc , 'rb') as file:
             true_samp = onp.load(file)
@@ -276,22 +277,21 @@ def main(_):
         if true_samp.shape[1] == 3:
             true_samp = jax.vmap(lambda m: SO3.from_matrix(m).wxyz )(true_samp) # print(X.shape)
 
-        visualize_so3_density(jax.vmap(lambda q: SO3(q).as_matrix())(true_samp), 100);
-        plt.savefig(output_dir + FLAGS.dataset + '_' + str(FLAGS.test_nsamples) + "_true.png")
         print("Calculating c2st ... ")
-
         c2_score = c2st(true_samp, x_t, seed, FLAGS.n_folds)
 
-        with open(output_dir+"output.txt", "a") as f:
-            print( "C2ST score: "+ str(c2_score), file=f)
+        with open(output_dir+"output_"+ FLAGS.diffusion_type + ".txt", "a") as f:
+          print( "C2ST score: "+ str(c2_score), file=f)
 
-        
+        print(true_samp.shape[1])
         print("\n")
         print("\n")
-
+        print("\n")
+        print("\n")
+        print("\n")
 
         print("C2ST score: "+ str(c2_score))
-
+        
 
 if __name__ == "__main__":
     app.run(main)

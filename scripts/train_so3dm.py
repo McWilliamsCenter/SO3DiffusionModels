@@ -28,7 +28,7 @@ flags.DEFINE_float("learning_rate", 0.001, "Initial learning rate for the optimi
 flags.DEFINE_integer("training_steps", 400000, "Total number of training steps.")
 flags.DEFINE_bool("train", True, "Whether to train the model or just sample from trained model.")
 flags.DEFINE_integer("test_nsamples", 200_000, "Number of samples to draw at testing time.")
-flags.DEFINE_string("input_rotation_param", "axis-angle", "Parameterisation of the rotation at the input of the NN either 'axis-angle' or 'matrix'")
+flags.DEFINE_string("input_rotation_param", "matrix", "Parameterisation of the rotation at the input of the NN either 'axis-angle' or 'matrix'")
  
 #Metric
 flags.DEFINE_bool("compute_c2st", True, "Whether to compute the c2st score agianst the true samples")
