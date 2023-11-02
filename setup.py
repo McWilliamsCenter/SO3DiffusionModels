@@ -9,6 +9,6 @@ setup(
     packages=find_packages(),
     install_requires=['optax', 'dm-haiku', 'healpy',
                       'tensorflow-probability', 
-                      'tensorflow-datasets'
+                      'tensorflow-datasets',
                       'jaxlie', 'flax'],
 )
